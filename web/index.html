@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NASA EONET Explorer</title>
+<style>
+  :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #101827; color: #edf4ff; }
+  body { margin: 0; }
+  main { max-width: 62rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+  h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -.04em; }
+  h2, h3 { margin: 0 0 .55rem; }
+  p { color: #adbed5; line-height: 1.55; }
+  form { display: flex; gap: .9rem; flex-wrap: wrap; align-items: end; margin: 2rem 0 1rem; }
+  label { display: grid; gap: .35rem; }
+  select, input, button { font: inherit; color: inherit; padding: .65rem .85rem; border-radius: .5rem; border: 1px solid #526984; background: #18253a; }
+  input[type=number] { width: 5rem; }
+  button { cursor: pointer; }
+  button[type=submit] { background: #8bdcca; color: #0e2827; border-color: transparent; font-weight: 700; }
+  :focus-visible { outline: 2px solid #8bdcca; outline-offset: 3px; }
+  [hidden] { display: none; }
+  #status { min-height: 1.6rem; }
+  #results { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
+  article { padding: 1.15rem; border: 1px solid #344860; border-radius: .7rem; background: #18253a; overflow-wrap: anywhere; }
+  article p { margin: .5rem 0 1rem; }
+  article button { margin-top: .55rem; }
+  a { color: #99e4d4; }
+  pre { overflow: auto; white-space: pre-wrap; }
+</style>
+<main>
+  <header>
+    <h1>NASA EONET Explorer</h1>
+    <p>Browse live natural events, filter by category, or look up an event ID.</p>
+  </header>
+  <form id="query">
+    <label>Query<select id="mode">
+      <option value="recent">Recent events</option>
+      <option value="category">Events by category</option>
+      <option value="details">Event details</option>
+    </select></label>
+    <label id="limit-field">Limit<input id="limit" type="number" min="1" max="50" value="3" required></label>
+    <label id="category-field" hidden>Category ID<input id="category" value="wildfires" required disabled></label>
+    <label id="event-field" hidden>Event ID<input id="eventId" placeholder="EONET_26568" required disabled></label>
+    <button type="submit">Run query</button>
+  </form>
+  <p id="status" role="status"></p>
+  <section id="results" aria-label="Event results"></section>
+</main>
+<script type="module">
+  const form = document.querySelector('#query');
+  const mode = document.querySelector('#mode');
+  const limit = document.querySelector('#limit');
+  const category = document.querySelector('#category');
+  const eventId = document.querySelector('#eventId');
+  const status = document.querySelector('#status');
+  const results = document.querySelector('#results');
+  let active;
+
+  function updateFields() {
+    for (const [input, enabled] of [
+      [limit, mode.value !== 'details'], [category, mode.value === 'category'], [eventId, mode.value === 'details'],
+    ]) {
+      input.disabled = !enabled;
+      input.parentElement.hidden = !enabled;
+    }
+  }
+
+  function add(parent, tag, value) {
+    const element = document.createElement(tag);
+    element.textContent = value;
+    parent.append(element);
+    return element;
+  }
+
+  function link(parent, label, value) {
+    try {
+      const url = new URL(value);
+      if (url.protocol === 'https:' || url.protocol === 'http:') {
+        add(parent, 'a', label).href = url.href;
+      }
+    } catch {
+      // A source may lack a usable URL.
+    }
+  }
+
+  function render(event, details) {
+    const card = document.createElement('article');
+    add(card, 'h2', event.title);
+    add(card, 'p', [event.status, ...event.categories.map(item => item.title)].join(' · '));
+    const date = event.latestObservationAt;
+    add(card, 'p', date ? 'Latest observation · ' + new Date(date).toLocaleString() : 'No dated observations');
+    link(card, event.id, event.link);
+    if (!details) {
+      const actions = add(card, 'div', '');
+      const button = add(actions, 'button', 'View details');
+      button.addEventListener('click', () => {
+        mode.value = 'details';
+        eventId.value = event.id;
+        updateFields();
+        form.requestSubmit();
+      });
+    } else {
+      if (event.description) add(card, 'p', event.description);
+      add(card, 'p', event.observationCount + ' observations');
+      if (event.closedAt) add(card, 'p', 'Closed · ' + new Date(event.closedAt).toLocaleString());
+      if (event.latestObservation) {
+        add(card, 'h3', 'Latest observation');
+        add(card, 'pre', JSON.stringify(event.latestObservation, null, 2));
+      }
+      if (event.sources.length) {
+        add(card, 'h3', 'Sources');
+        const sources = add(card, 'ul', '');
+        for (const source of event.sources) link(add(sources, 'li', ''), source.id, source.url);
+      }
+    }
+    results.append(card);
+  }
+
+  async function runQuery() {
+    active?.abort();
+    const request = new AbortController();
+    active = request;
+    const query = mode.value;
+    const params = new URLSearchParams();
+    if (!limit.disabled) params.set('limit', limit.value);
+    if (!category.disabled) params.set('category', category.value);
+    if (!eventId.disabled) params.set('eventId', eventId.value);
+    status.textContent = 'Loading events…';
+    results.replaceChildren();
+    try {
+      const response = await fetch('/api/' + query + '?' + params, { signal: request.signal });
+      const data = await response.json();
+      if (request.signal.aborted) return;
+      if (!response.ok) throw new Error(data.error);
+      if (query === 'details') {
+        status.textContent = 'Event details';
+        render(data, true);
+      } else {
+        status.textContent = data.count === 0 ? 'No events found.' : data.count + (data.count === 1 ? ' event' : ' events');
+        for (const event of data.events) render(event, false);
+      }
+    } catch (error) {
+      if (!request.signal.aborted) status.textContent = error.message;
+    }
+  }
+
+  mode.addEventListener('change', updateFields);
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    void runQuery();
+  });
+  updateFields();
+  form.requestSubmit();
+</script>
+</html>
