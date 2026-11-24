@@ -47,3 +47,5 @@ Both list tools return a count and event summaries with IDs, titles, categories,
 
 Run `npm.cmd run build` and then `npm.cmd run web`. Open http://127.0.0.1:8787 in your browser. The page loads recent events automatically. Use the query menu to filter by category or look up an event ID, or select **View details** on a result. The local web process launches the stdio MCP server and calls its tools.
 [![M8ven Score](https://m8ven.ai/badge/mcp/ushasri-katreddi-mcp-server-nasa-api-tkswpm?v=f562fca9596d14a76a58dac6c9288dd4)](https://m8ven.ai/mcp/ushasri-katreddi-mcp-server-nasa-api-tkswpm?s=readme)
+
+[![M8ven Score](https://m8ven.ai/badge/mcp/ushasri-katreddi-mcp-server-nasa-api-tkswpm)](https://m8ven.ai/mcp/ushasri-katreddi-mcp-server-nasa-api-tkswpm?s=readme)
