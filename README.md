@@ -42,10 +42,3 @@ Both list tools return a count and event summaries with IDs, titles, categories,
 1. Say “This server reads NASA’s live Earth Observatory Natural Event Tracker.” Call `get_recent_events` with `{"limit":3}` and point out a title, status, and latest observation date.
 2. Call `get_events_by_category` with `{"category":"wildfires","limit":3}` to focus on wildfires.
 3. Copy an event ID from the live results and call `get_event_details` with `{"eventId":"<copied ID>"}`. Show its source links and latest observation.
-
-## Browser demo
-
-Run `npm.cmd run build` and then `npm.cmd run web`. Open http://127.0.0.1:8787 in your browser. The page loads recent events automatically. Use the query menu to filter by category or look up an event ID, or select **View details** on a result. The local web process launches the stdio MCP server and calls its tools.
-[![M8ven Score](https://m8ven.ai/badge/mcp/ushasri-katreddi-mcp-server-nasa-api-tkswpm?v=f562fca9596d14a76a58dac6c9288dd4)](https://m8ven.ai/mcp/ushasri-katreddi-mcp-server-nasa-api-tkswpm?s=readme)
-
-[![M8ven Score](https://m8ven.ai/badge/mcp/ushasri-katreddi-mcp-server-nasa-api-tkswpm)](https://m8ven.ai/mcp/ushasri-katreddi-mcp-server-nasa-api-tkswpm?s=readme)
